@@ -5,7 +5,7 @@ import os
 # Configuração da página
 st.set_page_config(page_title="Gestão Logística Catalent", layout="wide")
 
-# Estilo "Branco" (CSS básico)
+# Estilo "Branco"
 st.markdown("""
     <style>
     .main { background-color: #ffffff; }
@@ -41,7 +41,6 @@ with st.sidebar:
         btn = st.form_submit_button("Salvar")
         
         if btn:
-            # Trava de 40 pallets
             total_dia = df[df['Data'] == str(data)]['Qtd PALLETS'].sum()
             if total_dia + pallets > 40:
                 st.error(f"Limite excedido! Restam apenas {40 - total_dia} pallets.")
@@ -50,34 +49,39 @@ with st.sidebar:
                 df = pd.concat([df, novo], ignore_index=True)
                 df.to_excel(ARQUIVO, index=False)
                 st.success("Agendado!")
+                st.rerun()
 
-# Exibição
+# Exibição Geral
 st.subheader("Visão Geral")
 st.dataframe(df, use_container_width=True)
 
-# Painel Catalent (Senha)
+# Painel Catalent (Senha) - Corrigido e Único
 with st.expander("Acesso Exclusivo Catalent"):
-    # ... (mais para cima no código)
+    senha = st.text_input("Senha", type="password", key="senha_catalent")
 
-# Painel Catalent (Senha)
- with st.expander("Acesso Exclusivo Catalent"):
-    senha = st.text_input("Senha", type="password" , key="senha_catalent")
-
-    
     if senha == "Catalent2026":
-        # É AQUI DENTRO que você deve colar o código de exclusão
-        st.write("Total de Pallets por Data:")
+        st.write("### 📊 Gráfico de Pallets")
         st.bar_chart(df.groupby('Data')['Qtd PALLETS'].sum())
         
-        # --- COLE O CÓDIGO DA EXCLUSÃO AQUI ---
+        # --- EXCLUSÃO DE AGENDAMENTO ---
         st.subheader("🗑️ Excluir Agendamento")
-        linha_para_deletar = st.number_input("Digite o ID da linha para excluir:", min_value=0, max_value=len(df)-1, step=1)
-        if st.button("Confirmar Exclusão"):
-            df = df.drop(linha_para_deletar)
-            df.to_excel(ARQUIVO, index=False)
-            st.warning(f"Linha {linha_para_deletar} removida!")
-            st.rerun()
-    senha = st.text_input("Senha", type="password")
-    if senha == "Catalent2026":
-        st.write("Total de Pallets por Data:")
-        st.bar_chart(df.groupby('Data')['Qtd PALLETS'].sum())
+        
+        if not df.empty:
+            linha_para_deletar = st.number_input(
+                "Digite o ID da linha para excluir:", 
+                min_value=0, 
+                max_value=len(df) - 1, 
+                value=0, 
+                step=1
+            )
+            
+            if st.button("Confirmar Exclusão"):
+                df = df.drop(df.index[linha_para_deletar])
+                df.to_excel(ARQUIVO, index=False)
+                st.warning(f"Linha {linha_para_deletar} removida com sucesso!")
+                st.rerun()
+        else:
+            st.info("Não há agendamentos para excluir.")
+            
+    elif senha != "":
+        st.error("Senha incorreta!")

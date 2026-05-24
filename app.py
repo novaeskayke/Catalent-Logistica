@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import plotly.express as px
 
 # Configuração da página
 st.set_page_config(page_title="Gestão Logística Catalent", layout="wide")
@@ -29,7 +30,7 @@ else:
 # Sidebar para adição
 with st.sidebar:
     st.header("Adicionar Registro")
-    with st.form("form_registro"):
+    with st.form("form_registro", clear_on_submit=True):
         data = st.date_input("Data")
         fornecedor = st.text_input("Fornecedor")
         oc = st.text_input("Ordem de Compra")
@@ -41,7 +42,8 @@ with st.sidebar:
         btn = st.form_submit_button("Salvar")
         
         if btn:
-            total_dia = df[df['Data'] == str(data)]['Qtd PALLETS'].sum()
+            # Converte a coluna Data para string para garantir comparação correta
+            total_dia = df[df['Data'].astype(str) == str(data)]['Qtd PALLETS'].sum()
             if total_dia + pallets > 40:
                 st.error(f"Limite excedido! Restam apenas {40 - total_dia} pallets.")
             else:
@@ -55,28 +57,37 @@ with st.sidebar:
 st.subheader("Visão Geral")
 st.dataframe(df, use_container_width=True)
 
-# Painel Catalent (Senha) - Corrigido e Único
+# Painel Catalent (Senha)
 with st.expander("Acesso Exclusivo Catalent"):
     senha = st.text_input("Senha", type="password", key="senha_catalent")
 
     if senha == "Catalent2026":
         st.write("### 📊 Gráfico de Pallets")
-        st.bar_chart(df.groupby('Data')['Qtd PALLETS'].sum())
+        
+        if not df.empty:
+            fig = px.bar(
+                df, 
+                x="Produto", 
+                y="Qtd PALLETS", 
+                color="Nome do Fornecedor", 
+                title="Distribuição de Pallets por Produto e Fornecedor"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Nenhum dado disponível para gerar gráfico.")
         
         # --- EXCLUSÃO DE AGENDAMENTO ---
         st.subheader("🗑️ Excluir Agendamento")
         
         if not df.empty:
-            linha_para_deletar = st.number_input(
-                "Digite o ID da linha para excluir:", 
-                min_value=0, 
-                max_value=len(df) - 1, 
-                value=0, 
-                step=1
+            # Lista os índices disponíveis
+            linha_para_deletar = st.selectbox(
+                "Selecione o ID da linha para excluir:", 
+                options=df.index
             )
             
             if st.button("Confirmar Exclusão"):
-                df = df.drop(df.index[linha_para_deletar])
+                df = df.drop(index=linha_para_deletar)
                 df.to_excel(ARQUIVO, index=False)
                 st.warning(f"Linha {linha_para_deletar} removida com sucesso!")
                 st.rerun()
